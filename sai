@@ -1,0 +1,56 @@
+import ipywidgets as widgets
+from IPython.display import display, clear_output
+import requests
+
+# Input field and button
+city_input = widgets.Text(value='New York', placeholder='Enter city', description='City:')
+button = widgets.Button(description='Get Weather', button_style='success')
+output = widgets.Output()
+
+def get_weather_colab(b):
+    with output:
+        clear_output()
+        city = city_input.value.strip()
+        if not city:
+            print("Please enter a city name.")
+            return
+
+        # Step 1: Geocoding
+        geocoding_url = "https://geocoding-api.open-meteo.com/v1/search"
+        geo_params = {"name": city, "count": 1, "language": "en"}
+
+        try:
+            geo_response = requests.get(geocoding_url, params=geo_params).json()
+            if "results" not in geo_response or len(geo_response["results"]) == 0:
+                print(f"City '{city}' not found.")
+                return
+
+            location_data = geo_response["results"][0]
+            lat, lon = location_data["latitude"], location_data["longitude"]
+            city_name = location_data["name"]
+            country = location_data.get("country", "")
+
+            # Step 2: Weather details
+            weather_url = "https://api.open-meteo.com/v1/forecast"
+            weather_params = {
+                "latitude": lat,
+                "longitude": lon,
+                "current_weather": True,
+                "temperature_unit": "celsius"
+            }
+            weather_response = requests.get(weather_url, params=weather_params).json()
+
+            if "current_weather" in weather_response:
+                current = weather_response["current_weather"]
+                temp = current["temperature"]
+                windspeed = current["windspeed"]
+                print(f"📍 {city_name}, {country}")
+                print(f"🌡️ Temperature: {temp}°C")
+                print(f"💨 Wind Speed: {windspeed} km/h")
+            else:
+                print("Could not retrieve weather data.")
+        except requests.exceptions.RequestException:
+            print("Failed to connect to the network.")
+
+button.on_click(get_weather_colab)
+display(city_input, button, output)
